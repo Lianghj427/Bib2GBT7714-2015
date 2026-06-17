@@ -58,27 +58,26 @@ TYPE_MAP: dict[str, str] = {
 # 辅助函数
 # ---------------------------------------------------------------------------
 
-def _extract_surname(author_str: str) -> str:
-    """从作者字符串中提取姓氏."""
-    a = author_str.strip()
-    if ',' in a:
-        return a.split(',')[0].strip()
-    parts = a.strip().split()
-    if len(parts) >= 2:
-        return parts[-1].strip().replace('.', '')
-    return parts[0].strip().replace('.', '') if parts else ''
-
-
 def _is_chinese(surname: str) -> bool:
     """判断姓氏是否为中文."""
     return surname.upper() in CHINESE_SURNAMES
 
 
-def _detect_language(raw_authors: list[str]) -> str:
-    """通过作者姓氏判断文献语言. 任一作者为中文姓氏则判定为中文文献."""
-    for a in raw_authors:
-        if _is_chinese(_extract_surname(a)):
-            return 'zh'
+def _contains_chinese(text: str) -> bool:
+    """判断文本是否包含中文字符."""
+    return bool(re.search(r'[一-鿿]', text)) if text else False
+
+
+def _detect_language(title: str = '', journal: str = '') -> str:
+    """判断文献语言.
+
+    基于标题和期刊名的中文字符检测, 这是最可靠的指标.
+    作者姓氏不能作为判断依据: 英文论文有中国作者是常态.
+    """
+    if _contains_chinese(title):
+        return 'zh'
+    if _contains_chinese(journal):
+        return 'zh'
     return 'en'
 
 
@@ -360,12 +359,13 @@ def convert_entry(entry: dict) -> str:
 
     # --- 作者 ---
     author_field = entry.get('author', '')
-    raw_authors = [a.strip() for a in re.split(r'\band\b', author_field, flags=re.IGNORECASE)] if author_field else []
-    lang = _detect_language(raw_authors)
+    title_raw = entry.get('title', '')
+    journal_raw = entry.get('journal', '') or entry.get('booktitle', '')
+    lang = _detect_language(title_raw, journal_raw)
     authors = format_authors(author_field, lang)
 
     # --- 题名 (首字母大写) ---
-    title = _capitalize_title(entry.get('title', ''))
+    title = _capitalize_title(title_raw)
 
     # --- 按类型分发 ---
     formatter = _FORMATTERS.get(gbt_code, _fmt_generic)
@@ -381,10 +381,10 @@ def _fmt_arxiv(entry: dict) -> str:
     """arXiv 预印本 [EB/OL] 特殊处理."""
     now = datetime.datetime.now().strftime('%Y-%m-%d')
     author_field = entry.get('author', '')
-    raw_authors = [a.strip() for a in re.split(r'\band\b', author_field, flags=re.IGNORECASE)] if author_field else []
-    lang = _detect_language(raw_authors)
+    title_raw = entry.get('title', '')
+    lang = _detect_language(title_raw)
     authors = format_authors(author_field, lang)
-    title = _capitalize_title(entry.get('title', ''))
+    title = _capitalize_title(title_raw)
 
     primaryclass = entry.get('primaryclass', '')
     eprint = entry.get('eprint', '')
