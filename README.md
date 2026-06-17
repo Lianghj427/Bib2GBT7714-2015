@@ -148,7 +148,7 @@ python utility/chineseSurnameCombination.py <surname1> <surname2> ...
 
 本项目基于 [54dbd/Bibtex-to-GBT7714-2015](https://github.com/54dbd/Bibtex-to-GBT7714-2015) 二次开发。
 
-- Lhong427
+- Lianghj427
 
 ---
 
